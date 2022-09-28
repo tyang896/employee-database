@@ -5,6 +5,9 @@ const cTable = require ("console.table");
 
 const choices = ["View All Departments", "View All Roles", "View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Role", "Add Department", "Add Employee", "Remove Employee", "Update Employee Role", "Quit"];
 [allDepartments, allRoles, viewAll, byDepartment, byManager, addRole, addDepartment, addEmployee, removeEmployee, updateRole, quit] = choices;
+let deptList = [];
+let roles = [];
+let managersList = [];
 
 const viewAllDepartments = () => {
     db.promise().query(`SELECT * FROM department`)
@@ -17,7 +20,7 @@ const viewAllDepartments = () => {
 }
 
 viewAllRoles = () => {
-    db.promise().query(`SELECT * FROM role`)
+    db.promise().query(`SELECT role.id, role.title, department.name AS department, role.salary FROM role INNER JOIN department ON role.department_id = department.id;`)
     .then(([results]) => {
         console.log();
         console.table(results); 
@@ -36,8 +39,7 @@ const viewAllEmployees = () => {
                         employee.manager_id AS 'manager'
                         FROM employee, role, department
                         WHERE department.id = role.department_id
-                        AND role.id = employee.role_id 
-                                
+                        AND role.id = employee.role_id                   
     `
     db.promise().query(sqlQuery)
         .then(([results]) => {
@@ -72,20 +74,71 @@ const viewByDepartments = (departmentId) => {
 const addNewDepartment = (name) => {
     db.promise().query(`INSERT INTO department (name) VALUES ("${name}");`)
     .then(() => {
-        console.log(`Added ${name} to the database`);
+        console.log(`\nAdded ${name} to the database\n`);
         init();
     })
     .catch(console.log);
 }
 
-const getDepartments = (deptList) => {
-    deptList = []
-    db.query(`SELECT department.name FROM department`, function (err, results) {
-            results.forEach(department => deptList.push(department.name));
-            return deptList;
-            console.log(deptList);
+// const getDepartments = (deptList) => {
+//     deptList = []
+//     db.query(`SELECT department.name FROM department`, function (err, results) {
+//             results.forEach(department => deptList.push(department.name));
+//             return deptList;
+//             console.log(deptList);
+//     })
+// }
+
+const addNewRole = (name, salary, department) => {
+    let departmentId;
+    //TODO: figure out how to convert the deparment name into the department id
+    db.promise().query(`SELECT department.name, department.id FROM department;`)
+    .then(([answers]) => {
+        answers.forEach(object => {
+            if(object.name === department){
+                departmentId = object.id;
+            }
+        })
+        db.promise().query(`INSERT INTO role (title, salary, department_id) VALUES ("${name}", ${salary}, ${departmentId});`)
+        .then(() => {
+            console.log(`\nAdded ${name} to the database\n`);
+            init();
+        })
+        .catch(console.log);
     })
+
 }
+
+const addNewEmployee = (firstName, lastName, roleTitle, employeeManager) => {
+    let roleId;
+    let managerId = "null";
+    db.promise().query(`SELECT role.title, role.id FROM role;`)
+    .then(([answers]) => {
+        //answers = [{title: Front Desk, id: 2}, {title: Software Engineer, id: 3}...]
+        answers.forEach(object => {
+            if(object.title === roleTitle){
+                roleId = object.id;
+            }
+        })
+        db.promise().query(`SELECT employee.first_name, employee.last_name, employee.id FROM employee WHERE employee.manager_id IS null;`)
+        .then(([answers]) => {
+            //answers = [{first_name: John, last_name: Doe, id: 1}]
+            answers.forEach(object => {
+                if(`${object.first_name} ${object.last_name}` === employeeManager){
+                    managerId = object.id;
+                }
+            })
+            db.promise().query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES  ("${firstName}", "${lastName}", ${roleId}, ${managerId})`)
+            .then(() => {
+                console.log(`\nAdded ${firstName} ${lastName} to the database\n`);
+                init();
+            })
+            
+        })
+    })
+        
+}
+
 
 const showQuestion = () => {
     //console.log(deptList);
@@ -133,12 +186,46 @@ const showQuestion = () => {
             type: "list",
             name: "roleDept",
             message: "Which department does the role belong to?",
-            choices: deptList,//figure out how to determine what are the departments in the list
+            choices: deptList,
             when(choice){
                 return choice.userOptions === addRole;
             }
+        },
+        {
+            type: "input",
+            name: "firstName",
+            message: "What is the employee's first name?",
+            when(choice){
+                return choice.userOptions === addEmployee;
+            }
+        },
+        {
+            type: "input",
+            name: "lastName",
+            message: "What is the employee's last name?",
+            when(choice){
+                return choice.userOptions === addEmployee;
+            }
+        },
+        {
+            type: "list",
+            name: "employeeRole",
+            message: "What is the employee's role?",
+            choices: roles,//TODO: Make a list of all the roles
+            when(choice){
+                return choice.userOptions === addEmployee;
+            }
+        },
+        {
+            type: "list",
+            name: "employeeManager",
+            message: "Who is the employee's manager?",
+            choices: managersList, //TODO: Make a list of all the managers
+            when(choice){
+                return choice.userOptions === addEmployee;
+            }
         }
-        //Add questions here
+        
     ]).then((response) => {
         switch(response.userOptions){
             case quit:
@@ -155,10 +242,7 @@ const showQuestion = () => {
             case byDepartment:
                 switch(response.departmentType){
                     case "Engineering":
-                        console.log("this nested switch statement works!");
                         viewByDepartments(02);
-                        //Create code here
-                        //init();
                         break;
                     case "Finance":
                         //Show Finance departmener here
@@ -179,6 +263,8 @@ const showQuestion = () => {
                 break;
             case addRole:
                 //addNewRole function here
+                const {roleName, roleSalary, roleDept} = response;
+                addNewRole(roleName, roleSalary, roleDept);
                 break;
             case addDepartment:
                 //addNewDepartment function goes here
@@ -186,6 +272,8 @@ const showQuestion = () => {
                 break;
             case addEmployee:
                 //addNewEmployee function goes here
+                const {firstName, lastName, employeeRole, employeeManager} = response;
+                addNewEmployee(firstName, lastName, employeeRole,  employeeManager);
                 break;
             case removeEmployee:
                 //remove function goes here
@@ -199,17 +287,38 @@ const showQuestion = () => {
 }//end of showQuestion function
 
 
-let deptList = []
+
 const init = () => {
-     
      //getDepartments(deptList);
-    db.promise().query(`SELECT department.name FROM department`)
+    db.promise().query(`SELECT department.name FROM department;`)
     .then(([answers]) => {
+        //console.log(answers);
         deptList = [];
+        roles = [];
+        managersList = [`None`];
         answers.forEach(department => deptList.push(department.name));
-        showQuestion();
+        db.promise().query(`SELECT role.title FROM role`)//TODO: Gain access to all the roles
+        .then(([answers])=>{
+            //answers = [{title: Engineer}, {title: Mechanical Engineer}, ....]
+            answers.forEach(role => roles.push(role.title))
+            db.promise().query(`SELECT employee.first_name, employee.last_name FROM employee WHERE employee.manager_id IS null;`)//add query here
+            .then(([answers]) => {
+                //answers = [{first_name: John, last_name: Doe}, ]
+                //add manager list here
+                answers.forEach(manager => {
+                    const name = `${manager.first_name} ${manager.last_name}`;
+                    managersList.push(name);
+                    //console.log(managersList)
+                })
+                //console.log(managersList)
+                showQuestion();
+            })
+            
+        })
+        
     })
     .catch(console.log)
+
     // console.log(deptList);
 }
 
