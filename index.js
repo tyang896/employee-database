@@ -8,6 +8,10 @@ const choices = ["View All Departments", "View All Roles", "View All Employees",
 let deptList = [];
 let roles = [];
 let managersList = [];
+let employeesList = [];
+
+//Use query to get a list of all the employees
+//use query to update their role id
 
 const viewAllDepartments = () => {
     db.promise().query(`SELECT * FROM department`)
@@ -136,7 +140,29 @@ const addNewEmployee = (firstName, lastName, roleTitle, employeeManager) => {
             
         })
     })
-        
+}
+
+
+const updateEmployeeRole = (name, role) => {
+    let roleId;
+    const fullName = name.split(" ");
+    const firstName = fullName[0];
+    db.promise().query(`SELECT role.title, role.id FROM role;`)
+    .then(([answers]) => {
+        //answers = [{title: Front Desk, id: 2}, {title: Software Engineer, id: 3}...]
+        answers.forEach(object => {
+            if(object.title === role){
+                roleId = object.id;
+            }
+        })
+        db.promise().query(`UPDATE employee SET role_id = ${roleId} WHERE first_name = "${firstName}"`)
+        .then(() => {
+            console.log(`\nUpdated employee's role\n`);
+            init();
+        })
+    })
+
+    //find the role id associated with the role name
 }
 
 
@@ -224,6 +250,25 @@ const showQuestion = () => {
             when(choice){
                 return choice.userOptions === addEmployee;
             }
+        },
+        {
+            type: "list",
+            name: "employee",
+            message: "Which employee's role do you want to update?",
+            choices: employeesList,
+            when(choice){
+                return choice.userOptions === updateRole;
+            }
+
+        },
+        {
+            type: "list",
+            name: "assignRole",
+            message: "Which role do you want to assign the selected employee?",
+            choices: roles,
+            when(choice){
+                return choice.userOptions === updateRole
+            }
         }
         
     ]).then((response) => {
@@ -280,6 +325,10 @@ const showQuestion = () => {
                 break;
             case updateRole:
                 //updateEmployeeRole function goes here
+                const {employee, assignRole} = response;
+                //employee = "John Doe"
+                //assignRole = "Engineer"
+                updateEmployeeRole(employee, assignRole);
                 break;
         }
     })
@@ -311,7 +360,16 @@ const init = () => {
                     //console.log(managersList)
                 })
                 //console.log(managersList)
-                showQuestion();
+                db.promise().query(`SELECT employee.first_name, employee.last_name FROM employee`)
+                .then(([answers]) => {
+                    //answers = [{first_name: John, last_name: Doe}, {first_name: becky, last_name: Johnson}, ....]
+                    answers.forEach(object => {
+                        const name = `${object.first_name} ${object.last_name}`;
+                        employeesList.push(name);
+                    })
+                    showQuestion();
+                })
+                
             })
             
         })
