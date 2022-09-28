@@ -34,16 +34,17 @@ viewAllRoles = () => {
 }
 
 const viewAllEmployees = () => {
-    const sqlQuery =    `SELECT employee.id, 
-                        employee.first_name, 
-                        employee.last_name,
-                        role.title,
-                        department.name AS 'department',
-                        role.salary,
-                        employee.manager_id AS 'manager'
-                        FROM employee, role, department
-                        WHERE department.id = role.department_id
-                        AND role.id = employee.role_id                   
+    const sqlQuery =    `SELECT employeeA.id, 
+    employeeA.first_name, 
+    employeeA.last_name,
+    role.title,
+    department.name AS 'department',
+    role.salary,
+    concat(employeeB.first_name, " ",  employeeB.last_name) AS 'manager'
+    FROM employee employeeA
+    INNER JOIN role ON role.id = employeeA.role_id 
+    INNER JOIN department ON department.id = role.department_id
+    LEFT JOIN employee employeeB ON employeeA.manager_id = employeeB.id;               
     `
     db.promise().query(sqlQuery)
         .then(([results]) => {
