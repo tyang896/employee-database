@@ -28,8 +28,9 @@ git clone git@github.com:tyang896/employee-management-system.git
    ```
    SOURCE db/schema.sql
    ```
-3. After running the schema file, you can optionally run the seeds file from the repository using `SOURCE db/seeds.sql` or run your own commands to create values for your table.
-4. Once you've used mysql, use the `exit` command to quit mySQL, then run the following code in the terminal to start the application: 
+3. After running the schema file, you can optionally run the seeds file from the repository using `SOURCE db/seeds.sql` or run your own commands to create values for your table. Once you've used mysql, use the `exit` command to quit mySQL.
+4. In the `db/connection.js` file, change the `user` property to `root `, the `database` to `employee_db`, and the password to your mySQL password.
+5. Run the following code in the terminal to start the application: 
 ```
 node index.js
 ```

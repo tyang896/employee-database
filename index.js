@@ -2,14 +2,19 @@ const inquirer = require("inquirer");
 const db = require("./db/connection.js");
 const cTable = require ("console.table");
 
+//Choices for inquirer prompts
 const choices = ["View All Departments", "View All Roles", "View All Employees", "Add Role", "Add Department", "Add Employee",  "Update Employee Role", "Quit"];
 [allDepartments, allRoles, viewAll, addRole, addDepartment, addEmployee, updateRole, quit] = choices;
+
+//Lists for retrieving data from employee_db database
 let deptList = [];
 let roles = [];
 let managersList = [];
 let employeesList = [];
 
+//Show a table of all departments
 const viewAllDepartments = () => {
+    //Retrieves the department id, and department name
     db.promise().query(`SELECT * FROM department`)
     .then(([results]) => {
         console.log();
@@ -19,7 +24,9 @@ const viewAllDepartments = () => {
     .catch(console.log);
 }
 
-viewAllRoles = () => {
+//Show a table of all roles
+const viewAllRoles = () => {
+    //Combine columns from the role, and department table
     db.promise().query(`SELECT role.id, role.title, department.name AS department, role.salary FROM role INNER JOIN department ON role.department_id = department.id;`)
     .then(([results]) => {
         console.log();
@@ -29,7 +36,9 @@ viewAllRoles = () => {
     .catch(console.log);
 }
 
+//Show a table of all employees
 const viewAllEmployees = () => {
+    //Query combines columns from employee, role, and department table
     const sqlQuery =    `SELECT employeeA.id, 
     employeeA.first_name, 
     employeeA.last_name,
@@ -51,8 +60,9 @@ const viewAllEmployees = () => {
         .catch(console.log);
 }
 
-
+//Add department to database
 const addNewDepartment = (name) => {
+    //Add new name to the 'name' column inside the department table
     db.promise().query(`INSERT INTO department (name) VALUES ("${name}");`)
     .then(() => {
         console.log(`\nAdded ${name} to the database\n`);
@@ -61,8 +71,10 @@ const addNewDepartment = (name) => {
     .catch(console.log);
 }
 
+//Add role to database
 const addNewRole = (name, salary, department) => {
     let departmentId;
+    //Retrieve name and id from the department table
     db.promise().query(`SELECT department.name, department.id FROM department;`)
     .then(([answers]) => {
         answers.forEach(object => {
@@ -70,6 +82,7 @@ const addNewRole = (name, salary, department) => {
                 departmentId = object.id;
             }
         })
+        //Add new role to the role table
         db.promise().query(`INSERT INTO role (title, salary, department_id) VALUES ("${name}", ${salary}, ${departmentId});`)
         .then(() => {
             console.log(`\nAdded ${name} to the database\n`);
@@ -80,9 +93,11 @@ const addNewRole = (name, salary, department) => {
 
 }
 
+//Add new employee to database
 const addNewEmployee = (firstName, lastName, roleTitle, employeeManager) => {
     let roleId;
     let managerId = "null";
+    //Retrieve title, and id from the role table inside the employee_db database
     db.promise().query(`SELECT role.title, role.id FROM role;`)
     .then(([answers]) => {
         //answers = [{title: Front Desk, id: 2}, {title: Software Engineer, id: 3}...]
@@ -91,6 +106,7 @@ const addNewEmployee = (firstName, lastName, roleTitle, employeeManager) => {
                 roleId = object.id;
             }
         })
+        //Retrieve managers from the database 
         db.promise().query(`SELECT employee.first_name, employee.last_name, employee.id FROM employee WHERE employee.manager_id IS null;`)
         .then(([answers]) => {
             //answers = [{first_name: John, last_name: Doe, id: 1}]
@@ -99,6 +115,7 @@ const addNewEmployee = (firstName, lastName, roleTitle, employeeManager) => {
                     managerId = object.id;
                 }
             })
+            //Add new employee to the employee table from the employee_db database
             db.promise().query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES  ("${firstName}", "${lastName}", ${roleId}, ${managerId})`)
             .then(() => {
                 console.log(`\nAdded ${firstName} ${lastName} to the database\n`);
@@ -109,11 +126,12 @@ const addNewEmployee = (firstName, lastName, roleTitle, employeeManager) => {
     })
 }
 
-
+//Update current employee role
 const updateEmployeeRole = (name, role) => {
     let roleId;
     const fullName = name.split(" ");
     const firstName = fullName[0];
+    //Retrieve role title, and role Id from database
     db.promise().query(`SELECT role.title, role.id FROM role;`)
     .then(([answers]) => {
         //answers = [{title: Front Desk, id: 2}, {title: Software Engineer, id: 3}...]
@@ -122,6 +140,7 @@ const updateEmployeeRole = (name, role) => {
                 roleId = object.id;
             }
         })
+        //Update emloyee role
         db.promise().query(`UPDATE employee SET role_id = ${roleId} WHERE first_name = "${firstName}"`)
         .then(() => {
             console.log(`\nUpdated employee's role\n`);
@@ -130,7 +149,7 @@ const updateEmployeeRole = (name, role) => {
     })
 }
 
-
+//Prompts user for questioms
 const showQuestion = () => {
     inquirer.prompt([
         {
@@ -139,7 +158,7 @@ const showQuestion = () => {
             message: "What would you like to do?",
             choices: [allDepartments, allRoles, viewAll, addDepartment, addRole, addEmployee, updateRole, quit]
         },
-        {
+        {//---------------------ADD DEPARTMENT SECTION-------------------------
             type: "input",
             name: "deptName",
             message: "What is the name of the department?",
@@ -147,7 +166,7 @@ const showQuestion = () => {
                 return choice.userOptions === addDepartment;
             }
         },
-        {
+        {//---------------------ADD ROLE SECTION-------------------------------
             type: "input",
             name: "roleName",
             message: "What is the name of the role?",
@@ -172,7 +191,7 @@ const showQuestion = () => {
                 return choice.userOptions === addRole;
             }
         },
-        {
+        {//---------------------ADD EMPLOYEE SECTION----------------------------
             type: "input",
             name: "firstName",
             message: "What is the employee's first name?",
@@ -206,7 +225,7 @@ const showQuestion = () => {
                 return choice.userOptions === addEmployee;
             }
         },
-        {
+        {//-------------------------UPDATE ROLE SECTION-------------------------
             type: "list",
             name: "employee",
             message: "Which employee's role do you want to update?",
@@ -227,6 +246,7 @@ const showQuestion = () => {
         }
         
     ]).then((response) => {
+        //Runs a specific function based off of user response
         switch(response.userOptions){
             case quit:
                 process.exit();
@@ -262,7 +282,7 @@ const showQuestion = () => {
 }//end of showQuestion function
 
 
-
+//This function initializes during start of application
 const init = () => {
     db.promise().query(`SELECT department.name FROM department;`)
     .then(([answers]) => {
