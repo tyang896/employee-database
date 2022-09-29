@@ -1,17 +1,13 @@
 const inquirer = require("inquirer");
 const db = require("./db/connection.js");
 const cTable = require ("console.table");
-// const All = require("./lib/viewAllEmployees")
 
-const choices = ["View All Departments", "View All Roles", "View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Role", "Add Department", "Add Employee", "Remove Employee", "Update Employee Role", "Quit"];
-[allDepartments, allRoles, viewAll, byDepartment, byManager, addRole, addDepartment, addEmployee, removeEmployee, updateRole, quit] = choices;
+const choices = ["View All Departments", "View All Roles", "View All Employees", "Add Role", "Add Department", "Add Employee",  "Update Employee Role", "Quit"];
+[allDepartments, allRoles, viewAll, addRole, addDepartment, addEmployee, updateRole, quit] = choices;
 let deptList = [];
 let roles = [];
 let managersList = [];
 let employeesList = [];
-
-//Use query to get a list of all the employees
-//use query to update their role id
 
 const viewAllDepartments = () => {
     db.promise().query(`SELECT * FROM department`)
@@ -55,26 +51,6 @@ const viewAllEmployees = () => {
         .catch(console.log);
 }
 
-//Takes in the department id from the seeds.sql file
-const viewByDepartments = (departmentId) => {
-    const deptId = departmentId;
-    const sqlQuery =    `SELECT employee.id,
-                        employee.first_name,
-                        employee.last_name,
-                        role.title
-                        FROM employee, role
-                        WHERE employee.role_id = role.id  
-                        AND role.department_id = ${deptId}    
-    `
-    db.promise().query(sqlQuery)
-    .then(([results]) => {
-        console.log();
-        console.table(results); 
-        init();
-    })
-    .catch(console.log);
-}
-
 
 const addNewDepartment = (name) => {
     db.promise().query(`INSERT INTO department (name) VALUES ("${name}");`)
@@ -85,18 +61,8 @@ const addNewDepartment = (name) => {
     .catch(console.log);
 }
 
-// const getDepartments = (deptList) => {
-//     deptList = []
-//     db.query(`SELECT department.name FROM department`, function (err, results) {
-//             results.forEach(department => deptList.push(department.name));
-//             return deptList;
-//             console.log(deptList);
-//     })
-// }
-
 const addNewRole = (name, salary, department) => {
     let departmentId;
-    //TODO: figure out how to convert the deparment name into the department id
     db.promise().query(`SELECT department.name, department.id FROM department;`)
     .then(([answers]) => {
         answers.forEach(object => {
@@ -162,28 +128,16 @@ const updateEmployeeRole = (name, role) => {
             init();
         })
     })
-
-    //find the role id associated with the role name
 }
 
 
 const showQuestion = () => {
-    //console.log(deptList);
     inquirer.prompt([
         {
             type: "list",
             name: "userOptions",
             message: "What would you like to do?",
-            choices: [allDepartments, allRoles, viewAll, byDepartment, byManager, addRole, addDepartment, addEmployee, removeEmployee, updateRole, quit]
-        },
-        {
-            type: "list",
-            name: "departmentType",
-            message: "Which department would you like to see employees for?",
-            choices: deptList,
-            when(choice){
-                return choice.userOptions === byDepartment;
-            }
+            choices: [allDepartments, allRoles, viewAll, addDepartment, addRole, addEmployee, updateRole, quit]
         },
         {
             type: "input",
@@ -238,7 +192,7 @@ const showQuestion = () => {
             type: "list",
             name: "employeeRole",
             message: "What is the employee's role?",
-            choices: roles,//TODO: Make a list of all the roles
+            choices: roles,
             when(choice){
                 return choice.userOptions === addEmployee;
             }
@@ -247,7 +201,7 @@ const showQuestion = () => {
             type: "list",
             name: "employeeManager",
             message: "Who is the employee's manager?",
-            choices: managersList, //TODO: Make a list of all the managers
+            choices: managersList, 
             when(choice){
                 return choice.userOptions === addEmployee;
             }
@@ -285,47 +239,18 @@ const showQuestion = () => {
             case viewAll:
                 viewAllEmployees();
                 break;
-            case byDepartment:
-                switch(response.departmentType){
-                    case "Engineering":
-                        viewByDepartments(02);
-                        break;
-                    case "Finance":
-                        //Show Finance departmener here
-                        viewByDepartments(04);
-                        break;
-                    case "Human Resources":
-                        //code for human resources here
-                        viewByDepartments(01);
-                        break;
-                    case "Information Technology":
-                        viewByDepartments(03);
-                        //code for IT here
-                        break;
-                }
-                break;
-            case byManager:
-                //add function here
+            case addDepartment:
+                addNewDepartment(response.deptName);
                 break;
             case addRole:
-                //addNewRole function here
                 const {roleName, roleSalary, roleDept} = response;
                 addNewRole(roleName, roleSalary, roleDept);
                 break;
-            case addDepartment:
-                //addNewDepartment function goes here
-                addNewDepartment(response.deptName);
-                break;
             case addEmployee:
-                //addNewEmployee function goes here
                 const {firstName, lastName, employeeRole, employeeManager} = response;
                 addNewEmployee(firstName, lastName, employeeRole,  employeeManager);
                 break;
-            case removeEmployee:
-                //remove function goes here
-                break;
             case updateRole:
-                //updateEmployeeRole function goes here
                 const {employee, assignRole} = response;
                 //employee = "John Doe"
                 //assignRole = "Engineer"
@@ -339,28 +264,24 @@ const showQuestion = () => {
 
 
 const init = () => {
-     //getDepartments(deptList);
     db.promise().query(`SELECT department.name FROM department;`)
     .then(([answers]) => {
-        //console.log(answers);
         deptList = [];
         roles = [];
+        employeesList = [];
         managersList = [`None`];
         answers.forEach(department => deptList.push(department.name));
-        db.promise().query(`SELECT role.title FROM role`)//TODO: Gain access to all the roles
+        db.promise().query(`SELECT role.title FROM role`)
         .then(([answers])=>{
             //answers = [{title: Engineer}, {title: Mechanical Engineer}, ....]
             answers.forEach(role => roles.push(role.title))
             db.promise().query(`SELECT employee.first_name, employee.last_name FROM employee WHERE employee.manager_id IS null;`)//add query here
             .then(([answers]) => {
                 //answers = [{first_name: John, last_name: Doe}, ]
-                //add manager list here
                 answers.forEach(manager => {
                     const name = `${manager.first_name} ${manager.last_name}`;
                     managersList.push(name);
-                    //console.log(managersList)
                 })
-                //console.log(managersList)
                 db.promise().query(`SELECT employee.first_name, employee.last_name FROM employee`)
                 .then(([answers]) => {
                     //answers = [{first_name: John, last_name: Doe}, {first_name: becky, last_name: Johnson}, ....]
@@ -370,15 +291,10 @@ const init = () => {
                     })
                     showQuestion();
                 })
-                
             })
-            
-        })
-        
+        }) 
     })
     .catch(console.log)
-
-    // console.log(deptList);
 }
 
 init();
